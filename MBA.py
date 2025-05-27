@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import math
 
 st.set_page_config(page_title="💰 Simulador de Custos", layout="wide")
 st.title("💰 Simulador de Custos com Projeção")
@@ -28,6 +29,7 @@ armazenagem_mp_unit = 1.5
 armazenagem_pa_unit = 2.4
 mp_por_unidade = 3
 mod_horas_por_unidade = 1.5
+horas_por_operario = 480  # informado pelo usuário
 
 # Módulos e depreciação
 investimento_modulo = 17500
@@ -96,6 +98,7 @@ elif aba == "🧮 Cálculo de Custos":
             # Custo variável
             mp_total = demanda * mp_por_unidade
             mod_total_horas = demanda * mod_horas_por_unidade
+            num_operarios = math.ceil(mod_total_horas / horas_por_operario)
             custo_mp = mp_total * custo_mp_unit
             custo_mod = mod_total_horas * custos_pessoas["Operários"]["Salário/hora"]
             custo_armazenagem_mp = mp_total * armazenagem_mp_unit
@@ -110,9 +113,10 @@ elif aba == "🧮 Cálculo de Custos":
                     frete_unit = fretes.get((regiao, "2"), 0)
                     frete += df_total.loc[regiao, periodo] * frete_unit
 
-            st.write(f"🧮 Produção: {int(demanda)} unidades")
+            st.write(f"🧮 Produção: **{int(demanda)} unidades**")
             st.write(f"- MP usada: {int(mp_total)} un. → R$ {custo_mp:,.2f}")
-            st.write(f"- MOD (1,5h/un): {mod_total_horas:.1f} h → R$ {custo_mod:,.2f}")
+            st.write(f"- MOD: {mod_total_horas:.1f} h → R$ {custo_mod:,.2f}")
+            st.write(f"👷 Operários necessários: **{num_operarios}** (480h cada)")
             st.write(f"- Armazenagem MP: R$ {custo_armazenagem_mp:,.2f}")
             st.write(f"- Armazenagem PA: R$ {custo_armazenagem_pa:,.2f}")
             st.write(f"📦 Custo variável: R$ {custo_var:,.2f}")
