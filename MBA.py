@@ -4,10 +4,10 @@ import numpy as np
 import math
 
 st.set_page_config(page_title="💰 Simulador de Custos", layout="wide")
-st.title("💰 Simulador de Custos com Projeção")
+st.title("💰 Simulador de Custos com Upload de Demanda")
 
 # --- Aba de navegação ---
-aba = st.sidebar.radio("Escolha a aba", ["📊 Entrada de Dados", "🧮 Cálculo de Custos", "📈 Resultados e Simulação"])
+aba = st.sidebar.radio("Escolha a aba", ["📁 Upload Demanda", "🧮 Cálculo de Custos", "📈 Resultados e Simulação"])
 
 # --- Dados fixos do sistema ---
 fretes = {
@@ -50,35 +50,26 @@ custos_producao = {
     (25001, float('inf')): 168300
 }
 
-# --- Aba 1: Entrada de Dados ---
-if aba == "📊 Entrada de Dados":
-    st.header("📊 Edição da Demanda Base (usada para cálculo de média)")
-    regioes = ["1", "2", "3"]
-    trimestres_hist = ["Hist 1", "Hist 2", "Hist 3", "Hist 4"]
+# --- Aba 1: Upload da Demanda ---
+if aba == "📁 Upload Demanda":
+    st.header("📁 Upload da Planilha de Demanda")
+    st.markdown("O arquivo deve conter as regiões como linhas (`1`, `2`, `3`) e colunas `T1` a `T8` com as demandas por período.")
+    file = st.file_uploader("Carregue o arquivo `.xlsx` com a demanda:", type=["xlsx"])
 
-    dados_iniciais = {
-        "Região": regioes,
-        "Hist 1": [2959, 5763, 6853],
-        "Hist 2": [3091, 8475, 10773],
-        "Hist 3": [3077, 7921, 10288],
-        "Hist 4": [3108, 5703, 7305],
-    }
-
-    df_input = pd.DataFrame(dados_iniciais)
-    df_editado = st.data_editor(df_input, num_rows="dynamic", use_container_width=True)
-    st.session_state["df_base_media"] = df_editado
+    if file:
+        df = pd.read_excel(file)
+        df.set_index(df.columns[0], inplace=True)
+        st.session_state["df_demandas"] = df.astype(int)
+        st.success("✅ Planilha carregada com sucesso!")
+        st.dataframe(st.session_state["df_demandas"], use_container_width=True)
 
 # --- Aba 2: Cálculo de Custos ---
 elif aba == "🧮 Cálculo de Custos":
-    st.header("🧮 Projeção de Custos para 8 Períodos")
+    st.header("🧮 Cálculo de Custos para os 8 Períodos")
 
-    if "df_base_media" in st.session_state:
-        df_base = st.session_state["df_base_media"].copy().set_index("Região")
-        media_por_regiao = df_base.mean(axis=1).round().astype(int)
-        periodos = [f"T{i+1}" for i in range(8)]
-
-        df_proj = pd.DataFrame({p: media_por_regiao for p in periodos})
-        df_total = df_proj.copy()
+    if "df_demandas" in st.session_state:
+        df_total = st.session_state["df_demandas"]
+        periodos = df_total.columns.tolist()
 
         total_por_trimestre = df_total.sum(axis=0)
         demanda_maxima = total_por_trimestre.max()
@@ -117,8 +108,8 @@ elif aba == "🧮 Cálculo de Custos":
             # Frete
             frete = 0
             for regiao in df_total.index:
-                if regiao != "2":
-                    frete_unit = fretes.get((regiao, "2"), 0)
+                if str(regiao) != "2":
+                    frete_unit = fretes.get((str(regiao), "2"), 0)
                     frete += df_total.loc[regiao, periodo] * frete_unit
 
             # Contratação e treinamento
@@ -158,6 +149,8 @@ elif aba == "🧮 Cálculo de Custos":
             "num_modulos": num_modulos,
             "num_periodos": num_periodos
         })
+    else:
+        st.warning("⚠️ Faça o upload da planilha primeiro na aba 'Upload Demanda'.")
 
 # --- Aba 3: Resultados e Simulação ---
 elif aba == "📈 Resultados e Simulação":
